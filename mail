@@ -1,0 +1,45 @@
+ public function sendReward(Request $request)
+    {
+       
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
+        
+        $userEmail = $request->input('user_email');
+        $user_Id = $request->input('user_id');
+        
+        $fileName = '';
+
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $extension = time() . '.' . $image->getClientOriginalExtension();
+            $destinationPath = public_path('/images/reward');
+            $image->move($destinationPath, $extension);
+        }
+        
+        $fileName = public_path('/images/reward/'.$extension);
+
+        try {
+            $reward = DB::table('refer_friends')
+            ->where('user_email', '=', $userEmail)
+            ->where('id', '=', $user_Id)
+            ->update(['reward' => '1', 'reciept' => $extension]);
+        
+            if ($reward) {
+                Mail::raw('Your Reward Price has been sent to you', function ($message) use ($userEmail, $fileName) {
+                    $message->to($userEmail);
+                    $message->subject('Reward Notification | TAXQUE | '. date('d-m-Y, H:i A'));
+                    if(!empty($fileName)){
+                    $message->attach($fileName);
+                    }
+                });
+            }
+        } catch (Exception $e) {
+            // Handle the exception if needed
+            echo $e->getLine();
+            echo $e->getMessage();
+            die;
+        }
+        
+        return redirect()->back()->with('success', 'Email sent successfully!');
+    }
